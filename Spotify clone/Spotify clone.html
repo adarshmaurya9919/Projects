@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Clone</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000;
+            color: #fff;
+        }
+        /* Custom scrollbar for a more native feel */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #121212;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #535353;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #b3b3b3;
+        }
+        /* Hide the default audio player */
+        audio {
+            display: none;
+        }
+        .progress-bar-container {
+            height: 4px;
+            background-color: #535353;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #fff;
+            border-radius: 2px;
+            position: relative;
+        }
+        .progress-bar-handle {
+            position: absolute;
+            right: -6px;
+            top: -4px;
+            width: 12px;
+            height: 12px;
+            background-color: #fff;
+            border-radius: 50%;
+            display: none; /* Hidden by default */
+        }
+        .progress-bar-container:hover .progress-bar-handle {
+            display: block;
+        }
+        .progress-bar-container:hover .progress-bar {
+            background-color: #1DB954; /* Spotify green on hover */
+        }
+        .song-row:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        .song-row .play-icon {
+            display: none;
+        }
+        .song-row.playing .track-number, .song-row:hover .track-number {
+            display: none;
+        }
+        .song-row.playing .play-icon, .song-row:hover .play-icon {
+            display: block;
+        }
+        .song-row.playing .title {
+            color: #1DB954;
+        }
+    </style>
+</head>
+<body class="text-gray-300">
+
+    <div class="flex h-screen flex-col sm:flex-row">
+        <!-- Sidebar -->
+        <aside class="w-full sm:w-64 bg-black p-2 sm:flex flex-col hidden">
+            <div class="bg-[#121212] rounded-lg p-4 space-y-4">
+                <a href="#" class="flex items-center space-x-4 text-white font-bold">
+                    <i class="fas fa-home text-2xl"></i>
+                    <span>Home</span>
+                </a>
+                <a href="#" class="flex items-center space-x-4">
+                    <i class="fas fa-search text-2xl"></i>
+                    <span>Search</span>
+                </a>
+            </div>
+            <div class="bg-[#121212] rounded-lg mt-2 flex-grow p-2">
+                <div class="flex justify-between items-center p-2">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-book text-2xl"></i>
+                        <span>Your Library</span>
+                    </div>
+                    <button class="text-gray-400 hover:text-white"><i class="fas fa-plus"></i></button>
+                </div>
+                <div class="mt-4 space-y-2 overflow-y-auto max-h-[calc(100vh-350px)]">
+                    <!-- Playlists will be dynamically added here -->
+                    <div id="playlist-container" class="space-y-2 px-2">
+                         <a href="#" class="block hover:text-white">Liked Songs</a>
+                         <a href="#" class="block hover:text-white">Chill Mix</a>
+                         <a href="#" class="block hover:text-white">Rock Classics</a>
+                         <a href="#" class="block hover:text-white">Indie Pop</a>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main id="main-content" class="flex-1 bg-[#121212] overflow-y-auto p-2 sm:p-6">
+            <!-- Content will be dynamically loaded here -->
+        </main>
+    </div>
+
+    <!-- Player Bar -->
+    <footer class="fixed bottom-0 left-0 right-0 bg-[#181818] border-t border-gray-800 p-2 sm:p-4 flex items-center justify-between text-white z-50">
+        <!-- Current Song Info -->
+        <div class="flex items-center w-1/4">
+            <img id="player-artwork" src="https://placehold.co/64x64/000000/FFFFFF?text=Spotify" alt="Album Art" class="w-14 h-14 rounded-md mr-4">
+            <div>
+                <h3 id="player-title" class="font-semibold text-sm">Select a song</h3>
+                <p id="player-artist" class="text-xs text-gray-400">to start playing</p>
+            </div>
+        </div>
+
+        <!-- Player Controls -->
+        <div class="flex flex-col items-center justify-center w-1/2">
+            <div class="flex items-center space-x-6">
+                <button class="text-gray-400 hover:text-white"><i class="fas fa-random text-lg"></i></button>
+                <button id="prev-btn" class="text-gray-400 hover:text-white"><i class="fas fa-step-backward text-xl"></i></button>
+                <button id="play-pause-btn" class="bg-white text-black rounded-full w-8 h-8 flex items-center justify-center">
+                    <i id="play-pause-icon" class="fas fa-play"></i>
+                </button>
+                <button id="next-btn" class="text-gray-400 hover:text-white"><i class="fas fa-step-forward text-xl"></i></button>
+                <button class="text-gray-400 hover:text-white"><i class="fas fa-redo text-lg"></i></button>
+            </div>
+            <div class="flex items-center space-x-2 mt-2 w-full max-w-lg">
+                <span id="current-time" class="text-xs w-10 text-right">0:00</span>
+                <div id="progress-container" class="progress-bar-container flex-grow">
+                    <div id="progress-bar" class="progress-bar">
+                        <div class="progress-bar-handle"></div>
+                    </div>
+                </div>
+                <span id="total-duration" class="text-xs w-10 text-left">0:00</span>
+            </div>
+        </div>
+
+        <!-- Volume Controls -->
+        <div class="flex items-center justify-end w-1/4 space-x-2">
+            <i class="fas fa-volume-up"></i>
+            <div id="volume-container" class="progress-bar-container w-24">
+                 <div id="volume-bar" class="progress-bar w-1/2">
+                    <div class="progress-bar-handle"></div>
+                 </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Mobile Navigation Bar -->
+    <nav class="sm:hidden fixed bottom-[88px] left-0 right-0 bg-[#282828] flex justify-around p-2 z-50">
+        <a href="#" class="flex flex-col items-center text-white">
+            <i class="fas fa-home text-2xl"></i>
+            <span class="text-xs">Home</span>
+        </a>
+        <a href="#" class="flex flex-col items-center text-gray-400">
+            <i class="fas fa-search text-2xl"></i>
+            <span class="text-xs">Search</span>
+        </a>
+        <a href="#" class="flex flex-col items-center text-gray-400">
+            <i class="fas fa-book text-2xl"></i>
+            <span class="text-xs">Your Library</span>
+        </a>
+    </nav>
+
+
+    <audio id="audio-player"></audio>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DATA ---
+            // Mock data for songs, albums, and playlists.
+            // In a real app, this would come from an API.
+            const songs = [
+                { id: 1, title: 'Peaceful Morning', artist: 'Ambient Gold', albumId: 1, duration: 185, audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
+                { id: 2, title: 'First Light', artist: 'Ambient Gold', albumId: 1, duration: 210, audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3' },
+                { id: 3, title: 'Ocean Breath', artist: 'Ambient Gold', albumId: 1, duration: 195, audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3' },
+                { id: 4, title: 'City Pulse', artist: 'Urban Groove', albumId: 2, duration: 150, audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3' },
+                { id: 5, title: 'Neon Drive', artist: 'Urban Groove', albumId: 2, duration: 220, audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3' },
+                { id: 6, title: 'Starlight', artist: 'Cosmic Dreamer', albumId: 3, duration: 240, audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3' },
+                { id: 7, title: 'Nebula', artist: 'Cosmic Dreamer', albumId: 3, duration: 200, audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3' },
+                { id: 8, title: 'Solar Winds', artist: 'Cosmic Dreamer', albumId: 3, duration: 180, audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3' },
+                { id: 9, title: 'Forest Trail', artist: 'Nature\'s Harmony', albumId: 4, duration: 190, audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3' },
+                { id: 10, title: 'River Flow', artist: 'Nature\'s Harmony', albumId: 4, duration: 175, audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3' },
+            ];
+
+            const albums = [
+                { id: 1, title: 'Morning Rise', artist: 'Ambient Gold', artworkUrl: 'https://placehold.co/300x300/1DB954/FFFFFF?text=AG' },
+                { id: 2, title: 'Metropolis', artist: 'Urban Groove', artworkUrl: 'https://placehold.co/300x300/F57C00/FFFFFF?text=UG' },
+                { id: 3, title: 'Galaxy', artist: 'Cosmic Dreamer', artworkUrl: 'https://placehold.co/300x300/5E35B1/FFFFFF?text=CD' },
+                { id: 4, title: 'Woodlands', artist: 'Nature\'s Harmony', artworkUrl: 'https://placehold.co/300x300/4CAF50/FFFFFF?text=NH' },
+                { id: 5, title: 'Deep Focus', artist: 'Study Beats', artworkUrl: 'https://placehold.co/300x300/0288D1/FFFFFF?text=SB' },
+                { id: 6, title: 'Summer Vibes', artist: 'Beach Party', artworkUrl: 'https://placehold.co/300x300/FFD600/000000?text=SV' }
+            ];
+
+            // --- STATE ---
+            let currentSongIndex = 0;
+            let currentQueue = [];
+            let isPlaying = false;
+
+            // --- DOM ELEMENTS ---
+            const mainContent = document.getElementById('main-content');
+            const audioPlayer = document.getElementById('audio-player');
+            const playPauseBtn = document.getElementById('play-pause-btn');
+            const playPauseIcon = document.getElementById('play-pause-icon');
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const progressBar = document.getElementById('progress-bar');
+            const progressContainer = document.getElementById('progress-container');
+            const volumeBar = document.getElementById('volume-bar');
+            const volumeContainer = document.getElementById('volume-container');
+            const currentTimeEl = document.getElementById('current-time');
+            const totalDurationEl = document.getElementById('total-duration');
+            const playerArtwork = document.getElementById('player-artwork');
+            const playerTitle = document.getElementById('player-title');
+            const playerArtist = document.getElementById('player-artist');
+
+            // --- UTILITY FUNCTIONS ---
+            const formatTime = (seconds) => {
+                const minutes = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+            };
+
+            // --- RENDER FUNCTIONS ---
+            const renderHomePage = () => {
+                mainContent.innerHTML = `
+                    <h1 class="text-3xl font-bold mb-6 text-white">Good Afternoon</h1>
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                        ${albums.map(album => `
+                            <div class="bg-[#181818] p-4 rounded-lg hover:bg-[#282828] transition-colors cursor-pointer album-card" data-album-id="${album.id}">
+                                <img src="${album.artworkUrl}" alt="${album.title}" class="rounded-md mb-4 w-full h-auto aspect-square object-cover">
+                                <h3 class="font-bold text-white">${album.title}</h3>
+                                <p class="text-sm text-gray-400">${album.artist}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                document.querySelectorAll('.album-card').forEach(card => {
+                    card.addEventListener('click', () => {
+                        const albumId = parseInt(card.dataset.albumId);
+                        renderAlbumPage(albumId);
+                    });
+                });
+            };
+
+            const renderAlbumPage = (albumId) => {
+                const album = albums.find(a => a.id === albumId);
+                const albumSongs = songs.filter(s => s.albumId === albumId);
+                
+                mainContent.innerHTML = `
+                    <div class="flex flex-col sm:flex-row items-start space-x-0 sm:space-x-8 p-4">
+                        <img src="${album.artworkUrl}" alt="${album.title}" class="w-48 h-48 rounded-lg shadow-lg mx-auto sm:mx-0 mb-4 sm:mb-0">
+                        <div class="flex-grow text-center sm:text-left">
+                            <h2 class="text-xs font-bold uppercase">Album</h2>
+                            <h1 class="text-4xl sm:text-6xl font-extrabold text-white">${album.title}</h1>
+                            <p class="mt-4 text-gray-300">${album.artist}</p>
+                        </div>
+                    </div>
+                    <div id="song-list-container" class="mt-8 px-4">
+                        <!-- Header -->
+                        <div class="grid grid-cols-[2rem_1fr_1fr_auto] gap-4 text-gray-400 border-b border-gray-700 pb-2 mb-2 text-sm">
+                            <div class="text-center">#</div>
+                            <div>Title</div>
+                            <div>Artist</div>
+                            <div><i class="far fa-clock"></i></div>
+                        </div>
+                        <!-- Songs -->
+                        ${albumSongs.map((song, index) => `
+                            <div class="grid grid-cols-[2rem_1fr_1fr_auto] gap-4 items-center p-2 song-row" data-song-id="${song.id}">
+                                <div class="text-center relative">
+                                    <span class="track-number">${index + 1}</span>
+                                    <i class="fas fa-play play-icon text-white"></i>
+                                </div>
+                                <div class="font-semibold title">${song.title}</div>
+                                <div>${song.artist}</div>
+                                <div class="text-gray-400">${formatTime(song.duration)}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+
+                document.querySelectorAll('.song-row').forEach(row => {
+                    row.addEventListener('click', () => {
+                        const songId = parseInt(row.dataset.songId);
+                        const songIndex = albumSongs.findIndex(s => s.id === songId);
+                        playQueue(albumSongs, songIndex);
+                    });
+                });
+            };
+            
+            // --- PLAYER LOGIC ---
+            const playQueue = (queue, startIndex = 0) => {
+                currentQueue = queue;
+                currentSongIndex = startIndex;
+                loadSong(currentQueue[currentSongIndex]);
+                playAudio();
+            };
+
+            const loadSong = (song) => {
+                const album = albums.find(a => a.id === song.albumId);
+                playerTitle.textContent = song.title;
+                playerArtist.textContent = song.artist;
+                playerArtwork.src = album.artworkUrl;
+                audioPlayer.src = song.audioUrl;
+                totalDurationEl.textContent = formatTime(song.duration);
+
+                // Highlight the currently playing song
+                document.querySelectorAll('.song-row').forEach(row => {
+                    row.classList.remove('playing');
+                    if (parseInt(row.dataset.songId) === song.id) {
+                        row.classList.add('playing');
+                    }
+                });
+            };
+
+            const playAudio = () => {
+                isPlaying = true;
+                audioPlayer.play();
+                playPauseIcon.classList.remove('fa-play');
+                playPauseIcon.classList.add('fa-pause');
+            };
+
+            const pauseAudio = () => {
+                isPlaying = false;
+                audioPlayer.pause();
+                playPauseIcon.classList.remove('fa-pause');
+                playPauseIcon.classList.add('fa-play');
+            };
+
+            const playNextSong = () => {
+                currentSongIndex = (currentSongIndex + 1) % currentQueue.length;
+                loadSong(currentQueue[currentSongIndex]);
+                playAudio();
+            };
+
+            const playPrevSong = () => {
+                currentSongIndex = (currentSongIndex - 1 + currentQueue.length) % currentQueue.length;
+                loadSong(currentQueue[currentSongIndex]);
+                playAudio();
+            };
+
+            const updateProgress = () => {
+                if (audioPlayer.duration) {
+                    const progressPercent = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+                    progressBar.style.width = `${progressPercent}%`;
+                    currentTimeEl.textContent = formatTime(audioPlayer.currentTime);
+                }
+            };
+            
+            const setProgress = (e) => {
+                const width = progressContainer.clientWidth;
+                const clickX = e.offsetX;
+                const duration = audioPlayer.duration;
+                if (duration) {
+                    audioPlayer.currentTime = (clickX / width) * duration;
+                }
+            };
+
+            const setVolume = (e) => {
+                const width = volumeContainer.clientWidth;
+                const clickX = e.offsetX;
+                const volume = clickX / width;
+                audioPlayer.volume = volume;
+                volumeBar.style.width = `${volume * 100}%`;
+            };
+
+            // --- EVENT LISTENERS ---
+            playPauseBtn.addEventListener('click', () => {
+                if (currentQueue.length === 0) return; // Do nothing if no song is loaded
+                isPlaying ? pauseAudio() : playAudio();
+            });
+
+            nextBtn.addEventListener('click', () => {
+                if (currentQueue.length > 0) playNextSong();
+            });
+            prevBtn.addEventListener('click', () => {
+                if (currentQueue.length > 0) playPrevSong();
+            });
+
+            audioPlayer.addEventListener('timeupdate', updateProgress);
+            audioPlayer.addEventListener('ended', playNextSong);
+            
+            progressContainer.addEventListener('click', setProgress);
+            volumeContainer.addEventListener('click', setVolume);
+            
+            // Set initial volume
+            audioPlayer.volume = 0.5;
+            volumeBar.style.width = '50%';
+
+
+            // --- INITIALIZATION ---
+            renderHomePage();
+        });
+    </script>
+</body>
+</html>
